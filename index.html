@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>大家來猜謎</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            background-image: url('https://images.unsplash.com/photo-1713403955914-b938e1bd1b2f?q=80&w=2069&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D');
+        }
+
+        .box {
+            display: flex;
+            flex-direction: column;
+            /* 使内容垂直堆叠 */
+            justify-content: center;
+            backdrop-filter: blur(10px);
+            align-items: center;
+            height: 100vh;
+            text-align: center;
+            background-color: rgba(255, 255, 255, 0.5);
+        }
+
+        div {
+            display: block;
+            text-align: center;
+        }
+
+        #tip {
+            display: none;
+        }
+
+        .container {
+            text-align: center;
+        }
+
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            z-index: 0;
+            /* 確保canvas位於背景層 */
+            width: 100%;
+            height: 100%;
+        }
+
+        #balloonCanvas {
+            display: none;
+            /* 默认隐藏画布 */
+        }
+
+        .footer {
+            width: 180px;
+            height: 30px;
+            background-color: #4ec1fb;
+            line-height: 30px;
+            text-align: center;
+            color: #1f1111;
+            border: 1px solid #2193cc;
+            border-radius: 3px;
+            cursor: pointer;
+            display: inline-block;
+        }
+
+        .footer:hover {
+            background: #4ec1fb;
+        }
+
+        .submit {
+            width: 180px;
+            height: 30px;
+            background: #14dd17;
+            line-height: 30px;
+            text-align: center;
+            color: #6e17fc;
+            border: 1px solid #043007;
+            border-radius: 3px;
+            cursor: pointer;
+            display: inline-block;
+        }
+
+        #list2 {
+            color: brown;
+            font-size: larger;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="box">
+        <canvas id="balloonCanvas" style="position: absolute; top: 0; left: 0; z-index: -1;"></canvas>
+        <h1 style="display: block; text-align: center;">猜謎送禮品</h1>
+        <br>
+        <br>
+        <div>
+            <span id="tip"></span>
+            <span id="put"></span>
+        </div>
+        <div id="list"></div>
+        <br>
+        <br>
+        <div id="word">請輸入回答:<br></div>
+        <div>
+            <input id="Alist" type="text"></input>
+        </div>
+        <br>
+        <br>
+        <br>
+        <div class="container">
+            <div class="footer">開始猜謎</div>
+            <div class="submit">提交答案</div>
+        </div>
+        <div id="list2"></div>
+        <div id="list3"></div>
+    </div>
+    <script>
+        var btn = document.querySelector('.footer');
+        var submitBtn = document.querySelector('.submit');
+        var tip = document.querySelector('#tip');
+        var list = document.querySelector('#list');
+        var answerInput = document.getElementById('Alist');
+        var list2 = document.querySelector('#list2');
+        var list3 = document.querySelector('#list3');
+
+        document.querySelector('#Alist').style.display = 'none';
+        document.querySelector('#word').style.display = 'none';
+
+        var card = [
+            '星星有多重？',
+            '什麼動物最愛貼在牆上？',
+            '什麼龍最輕(猜一物)?:',
+            '白蘿蔔喝醉了，會變成什麼？',
+            '牙醫靠什麼吃飯？',
+            '什麼布切不斷？',
+            '結婚後不生孩子的美女怎麼稱呼？',
+            '身穿著金色衣服的人(猜成語)?:',
+            '什麼職業比大學生厲害？',
+            '什麼布不能做衣服？',
+            '偷什麼東西不犯法？',
+            '如果動物園失火了，最先逃出來的是哪一種動物？',
+            '哪項比賽是往後跑的？',
+            '什麼東西比細菌還小？',
+            '你的爸爸的妹妹的堂弟的表哥的爸爸與你叔叔的兒子的嫂子是什麼關係',
+            '用什麼可以解開所有的謎',
+            '楚楚的生日在三月三十日，請問是哪年的三月三十日',
+            '哪兒的海不產魚',
+            '全世界死亡率最高的地方在哪裡',
+            '離過五十次婚的女人(猜一成語):',
+            '我有鑰匙，但打不開鎖。 我是什麼？',
+            '當貝克漢姆主罰點球時，他會擊中哪裡？',
+            '什麼東西有13個心臟，但沒有其他器官？',
+            '哪三個不為零的數字，無論相加還是相乘，都會給出相同的答案？',
+            '半真半假。（打一字）',
+            '乘人不在。（打一字）',
+            '拿不出手。（打一字）',
+            '昨日不可留。（打一字）',
+            '六十天。（打一字）',
+            '東洋兵。（打一字）',
+            '我沒有他有，天沒有地有。（打一字）',
+        ];
+
+        var animationFrameId; // 用於儲存動畫帧的ID
+
+        function startBalloonAnimation() {
+            const canvas = document.getElementById('balloonCanvas');
+            const ctx = canvas.getContext('2d');
+
+            // 設定畫布大小
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+            // 創建氣球對象
+            class Balloon {
+                constructor(color, x, y, radius) {
+                    this.color = color;
+                    this.x = x;
+                    this.y = y;
+                    this.radius = radius;
+                    this.velocity = { x: Math.random() - 0.5, y: 1 + Math.random() * 3 };
+                }
+
+                draw() {
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                    ctx.fillStyle = this.color;
+                    ctx.fill();
+                    ctx.closePath();
+                }
+
+                update() {
+                    this.draw();
+                    this.x += this.velocity.x;
+                    this.y += this.velocity.y;
+
+                    // 當氣球移動到畫布底部以下時，重置位置到頂部
+                    if (this.y - this.radius > canvas.height) {
+                        this.y = -this.radius;
+                        this.x = Math.random() * canvas.width;
+                    }
+                }
+            }
+
+            // 創建多個氣球
+            const balloons = [];
+            for (let i = 0; i < 50; i++) {
+                let radius = 10 + Math.random() * 20; // 半徑10至30之間
+                let x = Math.random() * canvas.width;
+                let y = Math.random() * canvas.height;
+                let color = `hsl(${Math.random() * 360}, 50%, 50%)`; // 隨機顏色
+                balloons.push(new Balloon(color, x, y, radius));
+            }
+
+            // 動畫函數
+            function animate() {
+                animationFrameId = requestAnimationFrame(animate);
+                console.log('Animation Frame ID: ', animationFrameId);
+                ctx.clearRect(0, 0, canvas.width, canvas.height); // 清空畫布
+
+                balloons.forEach(balloon => {
+                    balloon.update();
+                });
+            }
+
+            animate();
+        }
+
+        function stopBalloonAnimation() {
+            console.log('Stopping Animation Frame ID: ', animationFrameId);
+            cancelAnimationFrame(animationFrameId); // 停止動畫
+        }
+
+        var isButtonActive = true;
+
+        var selectedCard = selectNewCard();
+
+        function selectNewCard() {
+            var randomIndex = Math.floor(Math.random() * card.length);
+            return [randomIndex, card[randomIndex]];
+        }
+
+
+        btn.onclick = function () {
+            if (isButtonActive) {
+                document.querySelector('#Alist').style.display = '';
+                document.querySelector('#word').style.display = '';
+                btn.style.background = '#f1516c';
+                btn.style.borderColor = '#db2745';
+                tip.style.display = 'block';
+                list.innerHTML = '';
+                list2.innerHTML = '';
+                list3.innerHTML = ''; 3
+
+
+                stopBalloonAnimation();
+                document.getElementById('balloonCanvas').style.display = 'none';
+                selectedCard = selectNewCard();
+
+                var listItem = document.createElement('div');
+                listItem.innerHTML = selectedCard[1];
+                list.appendChild(listItem);
+                var judge = document.createElement('div');
+                list.appendChild(judge);
+
+                setTimeout(function () {
+                    btn.style.background = '#2ab8ff';
+                    btn.style.borderColor = '#2193cc';
+                    isButtonActive = true;
+                }, 500);
+
+                isButtonActive = false;
+            }
+        };
+
+        submitBtn.onclick = async function () {
+            console.log("Submit button clicked");
+            var userAnswer = answerInput.value.trim();  // Get user input
+            var judge = document.createElement('div');
+            let response = await fetch("api/answer", {
+                method: "POST", // *GET, POST, PUT, DELETE, etc.
+                mode: "cors", // no-cors, *cors, same-origin
+                cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
+                credentials: "same-origin", // include, *same-origin, omit
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                redirect: "follow", // manual, *follow, error
+                referrerPolicy: "no-referrer", // no-referrer, *no-referrer-when-downgrade, origin, origin-when-cross-origin, same-origin, strict-origin, strict-origin-when-cross-origin, unsafe-url
+                body: JSON.stringify({"qnum": selectedCard[0], "answer": userAnswer}), // body data type must match "Content-Type" header
+            })
+            if (response.ok) {
+                judge.innerHTML = '答對了!';
+                document.getElementById('balloonCanvas').style.display = 'block';
+                startBalloonAnimation();
+                list2.innerHTML = '';
+            } else {
+                judge.innerHTML = '再接再厲!';
+                document.getElementById('balloonCanvas').style.display = 'none';
+                stopBalloonAnimation();
+                list2.innerHTML = '';
+                // var listItem = document.createElement('div');
+                // listItem.innerHTML = '正解:' + selectedCard.answer1;
+                // list3.appendChild(listItem);
+            }
+            list2.appendChild(judge);  // Show the result
+            answerInput.value = '';  // Clear the input for next question
+        };
+    </script>
+</body>
+<script src="js/home.js"></script>
+
+</html>
